@@ -245,10 +245,9 @@ func main() {
 		logger.Infof("Color: %s", pastatus.PM25AqiColor)
 		logger.Infof("AQI: %d", pastatus.PM25Aqi)
 		logger.Infof("Color: %s", pastatus.PM25AqiColorB)
-		logger.Infof("AQI: %d", pastatus.PM25AqiB)
 		logger.Infof("AQI: %d", pastatus.B.PM25Aqi)
 		logger.Debugf("Sleeping for %d seconds", config.PurpleAir.PollRate)
-		write_influx(&pastatus.A, &pastatus.B)
+		write_influx(pastatus, &pastatus.A, &pastatus.B)
 		time.Sleep(time.Duration(config.PurpleAir.PollRate) * time.Second)
 	}
 }
@@ -318,6 +317,19 @@ func getJson(url string, target interface{}, myClient *http.Client) error {
 	return json.NewDecoder(r.Body).Decode(target)
 }
 
+func status_to_point(status *purpleAirStatus) (*influxclient.Point, error) {
+	tags := map[string]string{"sensorId": status.SensorId}
+	values := map[string]interface{}{}
+
+	values["temperature"] = status.Temperature
+	values["humidity"] = status.Humidity
+	values["pressure"] = status.Pressure
+	values["dewpoint"] = status.Dewpoint
+	values["rssi"] = status.RSSI
+
+	return influxclient.NewPoint("system", tags, values, time.Now())
+}
+
 func monitor_to_point(monitor *purpleAirMonitor) (*influxclient.Point, error) {
 	tags := map[string]string{"sensorId": monitor.SensorId, "sensor": monitor.Sensor}
 	values := map[string]interface{}{}
@@ -347,7 +359,7 @@ func monitor_to_point(monitor *purpleAirMonitor) (*influxclient.Point, error) {
 	return influxclient.NewPoint("purpleair", tags, values, time.Now())
 }
 
-func write_influx(monitorA *purpleAirMonitor, monitorB *purpleAirMonitor) {
+func write_influx(status *purpleAirStatus, monitorA *purpleAirMonitor, monitorB *purpleAirMonitor) {
 	c, err := influxclient.NewHTTPClient(influxclient.HTTPConfig{
 		Addr: fmt.Sprintf("http://%s:%d", config.Influx.Hostname, config.Influx.Port),
 	})
@@ -375,6 +387,12 @@ func write_influx(monitorA *purpleAirMonitor, monitorB *purpleAirMonitor) {
 		logger.Errorf("error translating monitor sample to point")
 	}
 	bp.AddPoint(pointB)
+
+	pointS, err := status_to_point(status)
+	if err != nil {
+		logger.Errorf("error translating status to point")
+	}
+	bp.AddPoint(pointS)
 
 	err = c.Write(bp)
 
