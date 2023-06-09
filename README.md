@@ -21,10 +21,49 @@ This provides an excellent way to get real-time information from a local device 
 Configuration
 -------------
 
-This program uses TOML as it's configuration file because all configuraiton file formats are terrible and TOML it terrible in the least amount of conflicting ways.
+This program uses TOML as it's configuration file because all configuraiton file formats are terrible and TOML it terrible in the least amount of conflicting ways. Here's a sample configuraiton file:
+
+```toml
+[purpleair]
+    url = "http://IP_ADDRESS_OR_HOSTNAME_OF_YOUR_PURPLE_AIR_DEVICE/json"
+    poll_rate = 120 # by default, without ?live=true in the URL, it only updates ever 2 minutes
+
+[mqtt]
+    broker_host = "IP_ADDRESS_OR_HOSTNAME_OF_YOUR_MQTT_BROKER"
+    broker_port = 1883
+    client_id = "purpleair2mqtt"
+    topic_prefix = "purpleair"
+    topic = ""
+
+# NOTE: This will overwrite the existing topic prefix
+[hass]
+    discovery = true
+    discovery_prefix = "homeassistant"
+    device_model = "pa-sd-ii"
+    device_name = "pa-sd-ii"
+    # if you don't set object_id then you'll get end up with the MAC as your id
+    object_id = "pa-sd-ii"
+
+[influx]
+    hostname = "IP_ADDRESS_OR_HOSTNAME_OF_YOUR_INFLUXDB_SERVER"
+    port = 8086
+    database = "purpleair"
+    username = "purpleair"
+    password = "INFLUXDB_PASSWORD"
+```
+
+Of note, for the InfluxDB support, it only supports InfluxDB version 1 and you need to create the database and user ahead of time as the program will not create them for you.
 
 Running the Application
 -----------------------
+
+If you're running this locally, you can run this command:
+
+```bash
+./purpleair2mqtt -config /path/to/config.toml
+```
+
+I normally run the program via `docker compose`. You can use the existing `docker-compose.example.yaml` file and modify it as needed. Then you should have the advantage of seeing the process restart automatically.
 
 License
 -------
