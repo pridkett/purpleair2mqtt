@@ -1,0 +1,10 @@
+version: "3"
+
+services:
+  purpleair2mqtt:
+    container_name: purpleair2mqtt
+    hostname: purpleair2mqtt
+    image: pridkett/purpleair2mqtt
+    volumes:
+      - './config.toml:/config.toml'
+    restart: unless-stopped
