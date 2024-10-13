@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"reflect"
 	"time"
 
 	mqtt "github.com/eclipse/paho.mqtt.golang"
@@ -188,11 +189,11 @@ var client mqtt.Client
 
 var connectHandler mqtt.OnConnectHandler = func(client mqtt.Client) {
 	r := client.OptionsReader()
-	logger.Infof("connected to MQTT at %s", r.Servers())
+	logger.Infof("Connected to MQTT at %s", r.Servers())
 }
 
 var connectLostHandler mqtt.ConnectionLostHandler = func(client mqtt.Client, err error) {
-	logger.Errorf("Connect lost: %v", err)
+	logger.Errorf("MQTT Connection lost: %v", err)
 }
 
 func main() {
@@ -214,24 +215,33 @@ func main() {
 		logger.Fatal("Must specify configuration file with -config FILENAME")
 	}
 
-	opts := mqtt.NewClientOptions()
+	if config.Mqtt != (tomlConfigMQTT{}) {
+		opts := mqtt.NewClientOptions()
 
-	opts.AddBroker(fmt.Sprintf("tcp://%s:%d", config.Mqtt.BrokerHost, config.Mqtt.BrokerPort))
-	if config.Mqtt.BrokerPassword != "" && config.Mqtt.BrokerUsername != "" {
-		opts.SetUsername(config.Mqtt.BrokerUsername)
-		opts.SetPassword(config.Mqtt.BrokerPassword)
-	}
-	opts.SetClientID(config.Mqtt.ClientId)
-	opts.OnConnect = connectHandler
-	opts.OnConnectionLost = connectLostHandler
+		opts.AddBroker(fmt.Sprintf("tcp://%s:%d", config.Mqtt.BrokerHost, config.Mqtt.BrokerPort))
+		if config.Mqtt.BrokerPassword != "" && config.Mqtt.BrokerUsername != "" {
+			opts.SetUsername(config.Mqtt.BrokerUsername)
+			opts.SetPassword(config.Mqtt.BrokerPassword)
+		}
+		opts.SetClientID(config.Mqtt.ClientId)
+		opts.OnConnect = connectHandler
+		opts.OnConnectionLost = connectLostHandler
 
-	client = mqtt.NewClient(opts)
-	if token := client.Connect(); token.Wait() && token.Error() != nil {
-		panic(token.Error())
+		client = mqtt.NewClient(opts)
+		if token := client.Connect(); token.Wait() && token.Error() != nil {
+			panic(token.Error())
+		}
+		if config.Mqtt.TopicPrefix == "" {
+			config.Mqtt.TopicPrefix = "purpleair"
+		}
+	} else {
+		logger.Info("No MQTT configuration found - not publishing to MQTT broker")
+		if config.Hass != (tomlConfigHass{}) {
+			logger.Fatal("Hass configuration found but no MQTT configuration found - please configure MQTT broker")
+		}
 	}
 
 	logger.Infof("HTTP Target: %s", config.PurpleAir.Url)
-
 	var myClient = &http.Client{Timeout: 10 * time.Second}
 
 	for {
@@ -240,14 +250,30 @@ func main() {
 		getJson(config.PurpleAir.Url, pastatus, myClient)
 		normalizePaStatus(pastatus)
 
+		// if we don't set the specific topic, then we can grab and set the topic from the Geo field
+		// this is useful if you're polling from multiple different sensors and aggregating them and
+		// don't want to think about the topic name for each one
+
+		logger.Infof("Geo: %s", pastatus.Geo)
 		logger.Infof("Sensor ID: %s", pastatus.SensorId)
 		logger.Infof("Timestamp: %s", pastatus.DateTime)
-		logger.Infof("Color: %s", pastatus.PM25AqiColor)
-		logger.Infof("AQI: %d", pastatus.PM25Aqi)
-		logger.Infof("Color: %s", pastatus.PM25AqiColorB)
-		logger.Infof("AQI: %d", pastatus.B.PM25Aqi)
+		logger.Infof("Sensor 1 Color: %s", pastatus.PM25AqiColor)
+		logger.Infof("Sensor 1 AQI: %d", pastatus.PM25Aqi)
+		logger.Infof("Sensor 2 Color: %s", pastatus.PM25AqiColorB)
+		logger.Infof("Sensor 2 AQI: %d", pastatus.B.PM25Aqi)
+
+		if config.Influx != (tomlConfigInflux{}) {
+			write_influx(pastatus, &pastatus.A, &pastatus.B)
+		}
+
+		if config.Mqtt != (tomlConfigMQTT{}) {
+			if config.Mqtt.Topic == "" {
+				config.Mqtt.Topic = pastatus.Geo
+			}
+			publishMQTT(pastatus)
+		}
+
 		logger.Debugf("Sleeping for %d seconds", config.PurpleAir.PollRate)
-		write_influx(pastatus, &pastatus.A, &pastatus.B)
 		time.Sleep(time.Duration(config.PurpleAir.PollRate) * time.Second)
 	}
 }
@@ -399,4 +425,25 @@ func write_influx(status *purpleAirStatus, monitorA *purpleAirMonitor, monitorB 
 	if err != nil {
 		logger.Fatal(err)
 	}
+}
+
+func publishMQTT(status *purpleAirStatus) {
+	v := reflect.ValueOf(*status)
+	typeOfStatus := v.Type()
+
+	for i := 0; i < v.NumField(); i++ {
+		fieldName := typeOfStatus.Field(i).Name
+
+		if fieldName == "A" || fieldName == "B" {
+			continue
+		}
+
+		fieldValue := v.Field(i).Interface()
+		topic := fmt.Sprintf("%s/%s/%s", config.Mqtt.TopicPrefix, config.Mqtt.Topic, fieldName)
+		logger.Infof("field[%s] = [%v]", fieldName, fieldValue)
+		logger.Infof("topic = %s", topic)
+		token := client.Publish(topic, 0, false, fmt.Sprintf("%v", fieldValue))
+		token.Wait()
+	}
+
 }
