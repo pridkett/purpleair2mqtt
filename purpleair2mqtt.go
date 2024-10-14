@@ -17,6 +17,29 @@ import (
 	influxclient "github.com/influxdata/influxdb1-client/v2"
 )
 
+// Types for Home Assistant MQTT Discovery
+type hassMqttConfigDevice struct {
+	Identifiers  []string `json:"identifiers"`
+	Manufacturer string   `json:"manufacturer"`
+	Model        string   `json:"model"`
+	Name         string   `json:"name"`
+	SWVersion    string   `json:"sw_version"`
+}
+
+type hassMqttConfig struct {
+	AvailabilityTopic string               `json:"availability_topic"`
+	ConfigTopic       string               `json:"-"`
+	Device            hassMqttConfigDevice `json:"device"`
+	DeviceClass       string               `json:"device_class,omitempty"`
+	Name              string               `json:"name"`
+	Qos               int                  `json:"qos"`
+	StateTopic        string               `json:"state_topic"`
+	UniqueId          string               `json:"unique_id"`
+	Icon              string               `json:"icon,omitempty"`
+	UnitOfMeasurement string               `json:"unit_of_measurement"`
+	Platform          string               `json:"-"`
+}
+
 // MQTT settings for overall configuration
 type tomlConfigMQTT struct {
 	BrokerHost     string
@@ -86,96 +109,96 @@ type purpleAirMonitor struct {
 }
 
 type purpleAirStatus struct {
-	SensorId           string  `json:"SensorId"`           // MAC address of the device
-	DateTime           string  `json:"DateTime"`           // UTC datetime on the device
-	Geo                string  `json:"Geo"`                // name of the device
-	Memory             int     `json:"Mem"`                // free memory on the device?
-	MemFrag            int     `json:"memfrag"`            // ???
-	MemFB              int     `json:"memfb"`              // ???
-	MemCS              int     `json:"memcs"`              // ???
-	Id                 int     `json:"Id"`                 // ???
-	Latitude           float32 `json:"lat"`                // configured latitude
-	Longitude          float32 `json:"long"`               // configure longitude
-	ADC                float32 `json:"Adc"`                // ???
-	LoggingRate        int     `json:"loggingrate"`        // how often the data are updated
-	Place              string  `json:"place"`              // location of the device
-	Version            string  `json:"version"`            // firmware version of the device
-	Uptime             int     `json:"uptime"`             // number of seconds since last reboot
-	RSSI               int     `json:"rssi"`               // wifi signal strength
-	Period             int     `json:"period"`             // number of seconds for averaging?
-	HttpSuccess        int     `json:"httpsuccess"`        // number of successful HTTP requests
-	HttpSends          int     `json:"httpsends"`          // total number of http sends
-	HardwareRevision   string  `json:"hardwarerevision"`   // version number of the physical hardware
-	HardwareDiscovered string  `json:"hardwarediscovered"` // list of the hardware present on the device
-	Temperature        int     `json:"current_temp_f"`     // current fahrenheit temperature rounded to nearest degree
-	Humidity           int     `json:"current_humidity"`   // current humidity rounded to nearest percent
-	Dewpoint           int     `json:"current_dewpoint_f"` // current dewpoint in fahrenheit rounded to nearest degree
-	Pressure           float32 `json:"pressure"`           // current pressure in mmHg
+	SensorId           string  `json:"SensorId" hass:"ignore"`                                 // MAC address of the device
+	DateTime           string  `json:"DateTime" hass:"ignore"`                                 // UTC datetime on the device
+	Geo                string  `json:"Geo" hass:"ignore"`                                      // name of the device
+	Memory             int     `json:"Mem" hass:"ignore"`                                      // free memory on the device?
+	MemFrag            int     `json:"memfrag" hass:"ignore"`                                  // ???
+	MemFB              int     `json:"memfb" hass:"ignore"`                                    // ???
+	MemCS              int     `json:"memcs" hass:"ignore"`                                    // ???
+	Id                 int     `json:"Id" hass:"ignore"`                                       // ???
+	Latitude           float32 `json:"lat" hass:"ignore"`                                      // configured latitude
+	Longitude          float32 `json:"long" hass:"ignore"`                                     // configure longitude
+	ADC                float32 `json:"Adc" hass:"ignore"`                                      // ???
+	LoggingRate        int     `json:"loggingrate" hass:"ignore"`                              // how often the data are updated
+	Place              string  `json:"place" hass:"ignore"`                                    // location of the device
+	Version            string  `json:"version" hass:"ignore"`                                  // firmware version of the device
+	Uptime             int     `json:"uptime" hass:"ignore"`                                   // number of seconds since last reboot
+	RSSI               int     `json:"rssi" hass:"ignore"`                                     // wifi signal strength
+	Period             int     `json:"period" hass:"ignore"`                                   // number of seconds for averaging?
+	HttpSuccess        int     `json:"httpsuccess" hass:"ignore"`                              // number of successful HTTP requests
+	HttpSends          int     `json:"httpsends" hass:"ignore"`                                // total number of http sends
+	HardwareRevision   string  `json:"hardwarerevision" hass:"ignore"`                         // version number of the physical hardware
+	HardwareDiscovered string  `json:"hardwarediscovered" hass:"ignore"`                       // list of the hardware present on the device
+	Temperature        int     `json:"current_temp_f" hass-name:"temperature" hass-unit:"°F"`  // current fahrenheit temperature rounded to nearest degree
+	Humidity           int     `json:"current_humidity" hass-name:"humidity" hass-unit:"%"`    // current humidity rounded to nearest percent
+	Dewpoint           int     `json:"current_dewpoint_f" hass-name:"dewpoint" hass-unit:"°F"` // current dewpoint in fahrenheit rounded to nearest degree
+	Pressure           float32 `json:"pressure" hass-name:"pressure" hass-unit:"mbar"`         // current pressure in millibar
 
-	A                purpleAirMonitor `json:sensor_a,omitempty` // breakout for sensor a
-	PM25AqiColor     string           `json:"p25aqic"`
-	PM25Aqi          int              `json:"pm2.5_aqi"`
-	PM10Cf1          float32          `json:"pm1_0_cf_1"`
-	P03um            float32          `json:"p_0_3_um"`
-	PM25Cf1          float32          `json:"pm2_5_cf_1"`
-	P05um            float32          `json:"p_0_5_um"`
-	PM100Cf1         float32          `json:"pm10_0_cf_1"`
-	P10um            float32          `json:"p_1_0_um"`
-	PM10Atm          float32          `json:"pm1_0_atm"`
-	P25um            float32          `json:"p_2_5_um"`
-	PM25Atm          float32          `json:"pm2_5_atm"`
-	P50um            float32          `json:"p_5_0_um"`
-	PM100Atm         float32          `json:"pm10_0_atm"`
-	P100um           float32          `json:"p_10_0_um"`
-	Key1Response     int              `json:"key1_response"`
-	Key1ResponseDate int              `json:"key1_response_date"`
-	Key1Count        int              `json:"key1_count"`
-	TsLatency        int              `json:"ts_latency"`
-	Key2Response     int              `json:"key2_response"`
-	Key2ResponseDate int              `json:"key2_response_date"`
-	Key2Count        int              `json:"key2_count"`
-	TsSLatency       int              `json:"ts_s_latency"`
+	A                purpleAirMonitor `json:"sensor_a,omitempty" hass:"ignore"` // breakout for sensor a
+	PM25AqiColor     string           `json:"p25aqic" hass:"ignore"`
+	PM25Aqi          int              `json:"pm2.5_aqi" hass-unit:"AQI" hass-class:"AQI"`
+	PM10Cf1          float32          `json:"pm1_0_cf_1" hass-unit:"µg/m³"`
+	P03um            float32          `json:"p_0_3_um" hass-unit:"count"`
+	PM25Cf1          float32          `json:"pm2_5_cf_1" hass-unit:"µg/m³"`
+	P05um            float32          `json:"p_0_5_um" hass-unit:"count"`
+	PM100Cf1         float32          `json:"pm10_0_cf_1 " hass-unit:"µg/m³"`
+	P10um            float32          `json:"p_1_0_um" hass-unit:"count"`
+	PM10Atm          float32          `json:"pm1_0_atm" hass-unit:"µg/m³"`
+	P25um            float32          `json:"p_2_5_um" hass-unit:"count"`
+	PM25Atm          float32          `json:"pm2_5_atm" hass-unit:"µg/m³"`
+	P50um            float32          `json:"p_5_0_um" hass-unit:"count"`
+	PM100Atm         float32          `json:"pm10_0_atm" hass-unit:"µg/m³"`
+	P100um           float32          `json:"p_10_0_um" hass-unit:"count"`
+	Key1Response     int              `json:"key1_response" hass:"ignore"`
+	Key1ResponseDate int              `json:"key1_response_date" hass:"ignore"`
+	Key1Count        int              `json:"key1_count" hass:"ignore"`
+	TsLatency        int              `json:"ts_latency" hass:"ignore"`
+	Key2Response     int              `json:"key2_response" hass:"ignore"`
+	Key2ResponseDate int              `json:"key2_response_date" hass:"ignore"`
+	Key2Count        int              `json:"key2_count" hass:"ignore"`
+	TsSLatency       int              `json:"ts_s_latency" hass:"ignore"`
 
-	B                 purpleAirMonitor `json:sensor_b,omitempty` // breakout for sensor b
-	PM25AqiColorB     string           `json:"p25aqic_b"`
-	PM25AqiB          int              `json:"pm2.5_aqi_b"`
-	PM10Cf1B          float32          `json:"pm1_0_cf_1_b"`
-	P03umB            float32          `json:"p_0_3_um_b"`
-	PM25Cf1B          float32          `json:"pm2_5_cf_1_b"`
-	P05umB            float32          `json:"p_0_5_um_b"`
-	PM100Cf1B         float32          `json:"pm10_0_cf_1_b"`
-	P10umB            float32          `json:"p_1_0_um_b"`
-	PM10AtmB          float32          `json:"pm1_0_atm_b"`
-	P25umB            float32          `json:"p_2_5_um_b"`
-	PM25AtmB          float32          `json:"pm2_5_atm_b"`
-	P50umB            float32          `json:"p_5_0_um_b"`
-	PM100AtmB         float32          `json:"pm10_0_atm_b"`
-	P100umB           float32          `json:"p_10_0_um_b"`
-	Key1ResponseB     int              `json:"key1_response_b"`
-	Key1ResponseDateB int              `json:"key1_response_date_b"`
-	Key1CountB        int              `json:"key1_count_b"`
-	TsLatencyB        int              `json:"ts_latency_b"`
-	Key2ResponseB     int              `json:"key2_response_b"`
-	Key2ResponseDateB int              `json:"key2_response_date_b"`
-	Key2CountB        int              `json:"key2_count_b"`
-	TsSLatencyB       int              `json:"ts_s_latency_b"`
+	B                 purpleAirMonitor `json:"sensor_b,omitempty" hass:"ignore"` // breakout for sensor b
+	PM25AqiColorB     string           `json:"p25aqic_b" hass:"ignore"`
+	PM25AqiB          int              `json:"pm2.5_aqi_b" hass-unit:"AQI" hass-class:"AQI"`
+	PM10Cf1B          float32          `json:"pm1_0_cf_1_b" hass-unit:"µg/m³"`
+	P03umB            float32          `json:"p_0_3_um_b" hass-unit:"count"`
+	PM25Cf1B          float32          `json:"pm2_5_cf_1_b" hass-unit:"µg/m³"`
+	P05umB            float32          `json:"p_0_5_um_b" hass-unit:"count"`
+	PM100Cf1B         float32          `json:"pm10_0_cf_1_b" hass-unit:"µg/m³"`
+	P10umB            float32          `json:"p_1_0_um_b" hass-unit:"count"`
+	PM10AtmB          float32          `json:"pm1_0_atm_b" hass-unit:"µg/m³"`
+	P25umB            float32          `json:"p_2_5_um_b" hass-unit:"count"`
+	PM25AtmB          float32          `json:"pm2_5_atm_b" hass-unit:"µg/m³"`
+	P50umB            float32          `json:"p_5_0_um_b" hass-unit:"count"`
+	PM100AtmB         float32          `json:"pm10_0_atm_b" hass-unit:"µg/m³"`
+	P100umB           float32          `json:"p_10_0_um_b" hass-unit:"count"`
+	Key1ResponseB     int              `json:"key1_response_b" hass:"ignore"`
+	Key1ResponseDateB int              `json:"key1_response_date_b" hass:"ignore"`
+	Key1CountB        int              `json:"key1_count_b" hass:"ignore"`
+	TsLatencyB        int              `json:"ts_latency_b" hass:"ignore"`
+	Key2ResponseB     int              `json:"key2_response_b" hass:"ignore"`
+	Key2ResponseDateB int              `json:"key2_response_date_b" hass:"ignore"`
+	Key2CountB        int              `json:"key2_count_b" hass:"ignore"`
+	TsSLatencyB       int              `json:"ts_s_latency_b" hass:"ignore"`
 
-	PaLatency     int    `json:"pa_latency"`
-	Response      int    `json:"response"`
-	ResponseDate  int    `json:"response_date"`
-	Latency       int    `json:"latency"`
-	WirelessState string `json:"wlstate"`
-	Status0       int    `json:"status_0"`
-	Status1       int    `json:"status_1"`
-	Status2       int    `json:"status_2"`
-	Status3       int    `json:"status_3"`
-	Status4       int    `json:"status_4"`
-	Status5       int    `json:"status_5"`
-	Status6       int    `json:"status_6"`
-	Status7       int    `json:"status_7"`
-	Status8       int    `json:"status_8"`
-	Status9       int    `json:"status_9"`
-	SSID          string `json:"ssid"`
+	PaLatency     int    `json:"pa_latency" hass:"ignore"`
+	Response      int    `json:"response" hass:"ignore"`
+	ResponseDate  int    `json:"response_date" hass:"ignore"`
+	Latency       int    `json:"latency" hass:"ignore"`
+	WirelessState string `json:"wlstate" hass:"ignore"`
+	Status0       int    `json:"status_0" hass:"ignore"`
+	Status1       int    `json:"status_1" hass:"ignore"`
+	Status2       int    `json:"status_2" hass:"ignore"`
+	Status3       int    `json:"status_3" hass:"ignore"`
+	Status4       int    `json:"status_4" hass:"ignore"`
+	Status5       int    `json:"status_5" hass:"ignore"`
+	Status6       int    `json:"status_6" hass:"ignore"`
+	Status7       int    `json:"status_7" hass:"ignore"`
+	Status8       int    `json:"status_8" hass:"ignore"`
+	Status9       int    `json:"status_9" hass:"ignore"`
+	SSID          string `json:"ssid" hass:"ignore"`
 }
 
 // set up a global logger...
@@ -254,25 +277,32 @@ func main() {
 		// this is useful if you're polling from multiple different sensors and aggregating them and
 		// don't want to think about the topic name for each one
 
-		logger.Infof("Geo: %s", pastatus.Geo)
-		logger.Infof("Sensor ID: %s", pastatus.SensorId)
-		logger.Infof("Timestamp: %s", pastatus.DateTime)
-		logger.Infof("Sensor 1 Color: %s", pastatus.PM25AqiColor)
-		logger.Infof("Sensor 1 AQI: %d", pastatus.PM25Aqi)
-		logger.Infof("Sensor 2 Color: %s", pastatus.PM25AqiColorB)
-		logger.Infof("Sensor 2 AQI: %d", pastatus.B.PM25Aqi)
+		if pastatus.Geo != "" {
+			logger.Infof("Geo: %s", pastatus.Geo)
+			logger.Infof("Sensor ID: %s", pastatus.SensorId)
+			logger.Infof("Timestamp: %s", pastatus.DateTime)
+			logger.Infof("Sensor 1 Color: %s", pastatus.PM25AqiColor)
+			logger.Infof("Sensor 1 AQI: %d", pastatus.PM25Aqi)
+			logger.Infof("Sensor 2 Color: %s", pastatus.PM25AqiColorB)
+			logger.Infof("Sensor 2 AQI: %d", pastatus.B.PM25Aqi)
 
-		if config.Influx != (tomlConfigInflux{}) {
-			write_influx(pastatus, &pastatus.A, &pastatus.B)
-		}
-
-		if config.Mqtt != (tomlConfigMQTT{}) {
-			if config.Mqtt.Topic == "" {
-				config.Mqtt.Topic = pastatus.Geo
+			if config.Influx != (tomlConfigInflux{}) {
+				write_influx(pastatus, &pastatus.A, &pastatus.B)
 			}
-			publishMQTT(pastatus)
-		}
 
+			if config.Mqtt != (tomlConfigMQTT{}) {
+				if config.Mqtt.Topic == "" {
+					config.Mqtt.Topic = pastatus.Geo
+				}
+				publishMQTT(pastatus)
+			}
+
+			if config.Hass != (tomlConfigHass{}) {
+				publishHass(pastatus)
+			}
+		} else {
+			logger.Warnf("Got a strange response from the PurpleAir API - skipping this poll")
+		}
 		logger.Debugf("Sleeping for %d seconds", config.PurpleAir.PollRate)
 		time.Sleep(time.Duration(config.PurpleAir.PollRate) * time.Second)
 	}
@@ -440,10 +470,73 @@ func publishMQTT(status *purpleAirStatus) {
 
 		fieldValue := v.Field(i).Interface()
 		topic := fmt.Sprintf("%s/%s/%s", config.Mqtt.TopicPrefix, config.Mqtt.Topic, fieldName)
-		logger.Infof("field[%s] = [%v]", fieldName, fieldValue)
-		logger.Infof("topic = %s", topic)
+		logger.Debugf("field[%s] = [%v]", fieldName, fieldValue)
+		logger.Debugf("topic = %s", topic)
 		token := client.Publish(topic, 0, false, fmt.Sprintf("%v", fieldValue))
 		token.Wait()
+	}
+
+}
+
+func publishHass(status *purpleAirStatus) {
+	v := reflect.ValueOf(*status)
+	typeOfStatus := v.Type()
+
+	for i := 0; i < v.NumField(); i++ {
+		field := typeOfStatus.Field(i)
+		fieldName := field.Name
+		mqttFieldName := fieldName
+		logger.Debugf("Field %s has type %s - %v", fieldName, field.Type, field.Tag)
+		if hassTag, ok := field.Tag.Lookup("hass"); ok && hassTag == "ignore" {
+			logger.Debugf("Ignoring sending field %s to HomeAssistant", fieldName)
+			continue
+		}
+		if hassFieldName, ok := field.Tag.Lookup("hass-name"); ok {
+			mqttFieldName = hassFieldName
+		}
+
+		// logger.Infof("Sending field %s to HomeAssistant", fieldName)
+
+		// generage the topic name
+		topic := fmt.Sprintf("%s/%s/%s/%s", config.Hass.DiscoveryPrefix, "sensor", config.Hass.DeviceName, mqttFieldName)
+
+		// send the availabilty message
+		token := client.Publish(topic+"/availability", 0, false, "online")
+		token.Wait()
+
+		// send the state message
+		token = client.Publish(topic+"/state", 0, false, fmt.Sprintf("%v", reflect.ValueOf(status).Elem().FieldByName(fieldName).Interface()))
+		token.Wait()
+
+		// send the config message
+		hassConfig := hassMqttConfig{
+			AvailabilityTopic: topic + "/availability",
+			ConfigTopic:       topic + "/config",
+			Device: hassMqttConfigDevice{
+				Identifiers:  []string{status.Geo},
+				Manufacturer: config.Hass.Manufacturer,
+				Model:        config.Hass.DeviceModel,
+				Name:         config.Hass.DeviceName,
+				SWVersion:    status.Version,
+			},
+			Name:       fieldName,
+			Qos:        0,
+			StateTopic: topic + "/state",
+			UniqueId:   fmt.Sprintf("%s_%s", status.Geo, mqttFieldName),
+		}
+
+		if hassTag, ok := field.Tag.Lookup("hass-unit"); ok {
+			hassConfig.UnitOfMeasurement = hassTag
+		}
+
+		configPayload, err := json.Marshal(hassConfig)
+		if err != nil {
+			logger.Errorf("Error marshalling hassConfig to JSON: %v", err)
+			continue
+		}
+		token = client.Publish(topic+"/config", 0, false, configPayload)
+		token.Wait()
+
 	}
 
 }
