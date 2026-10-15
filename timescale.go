@@ -105,7 +105,8 @@ func systemRow(t time.Time, status *purpleAirStatus) []any {
 	for i, c := range cols {
 		switch {
 		case failed && (c == "temperature_f" || c == "humidity" || c == "dewpoint_f" || c == "pressure"),
-			badTemp && (c == "temperature_f" || c == "dewpoint_f"),
+			// a glitched temperature comes with garbage humidity (seen: 100 %)
+			badTemp && (c == "temperature_f" || c == "dewpoint_f" || c == "humidity"),
 			badPressure && c == "pressure":
 			row[i] = nil
 		}

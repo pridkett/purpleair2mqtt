@@ -96,7 +96,7 @@ func TestRows(t *testing.T) {
 		null           string
 	}{
 		{0, 0, 0, 0, "temperature_f humidity dewpoint_f pressure"},
-		{373, 40, 50, 1012, "temperature_f dewpoint_f"},
+		{373, 100, 50, 1012, "temperature_f humidity dewpoint_f"},
 		{61, 40, 48, -228.79, "pressure"},
 		{0, 40, -10, 1012, ""}, // a real 0 °F winter reading
 	} {

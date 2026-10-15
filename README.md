@@ -84,7 +84,7 @@ it expects is in `timescale_test.go` (`testSchema`). Columns use the sensor's `/
 are queued in memory and written with the next successful insert.
 
 BME280 readings that can't be right are stored as NULL: all four when the sensor has failed (about -227 °F) or a read
-dropped out (0 °F, 0 %, 0 hPa together), and just the temperature/dewpoint or pressure when one is out of range
+dropped out (0 °F, 0 %, 0 hPa together), and just the temperature/humidity/dewpoint or pressure when one is out of range
 (-40 to 150 °F, 800 to 1100 hPa). MQTT still receives what the sensor reports.
 
 Building the Application
