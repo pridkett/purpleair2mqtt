@@ -83,8 +83,9 @@ it expects is in `timescale_test.go` (`testSchema`). Columns use the sensor's `/
 `pm*_cf_1` are mass concentrations (µg/m³), and `p_*_um` are particle counts per 0.1 L. Readings that can't be written
 are queued in memory and written with the next successful insert.
 
-When a PurpleAir's BME280 fails it reports about -227 °F; the program then stores its temperature, humidity, dewpoint
-and pressure as NULL. MQTT still receives what the sensor reports.
+BME280 readings that can't be right are stored as NULL: all four when the sensor has failed (about -227 °F) or a read
+dropped out (0 °F, 0 %, 0 hPa together), and just the temperature/dewpoint or pressure when one is out of range
+(-40 to 150 °F, 800 to 1100 hPa). MQTT still receives what the sensor reports.
 
 Building the Application
 ------------------------

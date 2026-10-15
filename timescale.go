@@ -27,10 +27,15 @@ type tomlConfigTimescale struct {
 
 var errSchema = errors.New("schema mismatch")
 
-// bme280Failed is the temperature (°F) a PurpleAir reports once its BME280
-// has failed (it reads about -227); its humidity, dewpoint and pressure are
-// then meaningless too.
-const bme280Failed = -200
+// A PurpleAir's BME280 reports about -227 °F once it has failed, and all
+// zeros (0 °F, 0 %, 0 hPa) when a read drops out; its humidity, dewpoint and
+// pressure are then meaningless too. Outside these ranges a single reading is
+// a glitch (seen: 373 °F, -228.79 hPa).
+const (
+	bme280Failed             = -200
+	minTempF, maxTempF       = -40, 150
+	minPressure, maxPressure = 800.0, 1100.0
+)
 
 // pgWriter inserts rows into one wide table. Rows that can't be written are
 // queued, oldest first, and retried with the next ones.
@@ -88,17 +93,21 @@ func pgRow(t time.Time, v any) []any {
 	return row
 }
 
-// systemRow is pgRow for the status, with the BME280 readings NULL once the
-// sensor has failed.
+// systemRow is pgRow for the status, with BME280 readings that can't be
+// right stored as NULL.
 func systemRow(t time.Time, status *purpleAirStatus) []any {
 	row := pgRow(t, status)
-	if status.Temperature <= bme280Failed {
-		cols := append([]string{"time"}, pgColumns(reflect.TypeOf(*status))...)
-		for i, c := range cols {
-			switch c {
-			case "temperature_f", "humidity", "dewpoint_f", "pressure":
-				row[i] = nil
-			}
+	failed := status.Temperature <= bme280Failed ||
+		(status.Temperature == 0 && status.Humidity == 0 && status.Pressure == 0)
+	badTemp := status.Temperature < minTempF || status.Temperature > maxTempF
+	badPressure := status.Pressure < minPressure || status.Pressure > maxPressure
+	cols := append([]string{"time"}, pgColumns(reflect.TypeOf(*status))...)
+	for i, c := range cols {
+		switch {
+		case failed && (c == "temperature_f" || c == "humidity" || c == "dewpoint_f" || c == "pressure"),
+			badTemp && (c == "temperature_f" || c == "dewpoint_f"),
+			badPressure && c == "pressure":
+			row[i] = nil
 		}
 	}
 	return row

@@ -88,6 +88,30 @@ func TestRows(t *testing.T) {
 	if sys["temperature_f"] != 61 || sys["dewpoint_f"] != 48 || sys["pressure"] != 1012.3 || sys["humidity"] != s.Humidity {
 		t.Errorf("system row %v", sys)
 	}
+
+	// A dropped-out read is all zeros; glitches null just the bad reading
+	for _, c := range []struct {
+		temp, hum, dew int
+		pressure       float64
+		null           string
+	}{
+		{0, 0, 0, 0, "temperature_f humidity dewpoint_f pressure"},
+		{373, 40, 50, 1012, "temperature_f dewpoint_f"},
+		{61, 40, 48, -228.79, "pressure"},
+		{0, 40, -10, 1012, ""}, // a real 0 °F winter reading
+	} {
+		s.Temperature, s.Humidity, s.Dewpoint, s.Pressure = c.temp, c.hum, c.dew, c.pressure
+		sys = rowMap(pgColumns(reflect.TypeOf(purpleAirStatus{})), systemRow(ts, s))
+		var null []string
+		for _, col := range []string{"temperature_f", "humidity", "dewpoint_f", "pressure"} {
+			if sys[col] == nil {
+				null = append(null, col)
+			}
+		}
+		if got := strings.Join(null, " "); got != c.null {
+			t.Errorf("%+v: NULL %q, want %q", c, got, c.null)
+		}
+	}
 }
 
 // Without a database, rows queue up to MaxQueue, dropping the oldest.
