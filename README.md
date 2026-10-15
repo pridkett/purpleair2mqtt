@@ -66,6 +66,26 @@ Finally, if you'd like to use the native InfluxDB integration, this section shou
     password = "YOUR_PASSWORD"
 ```
 
+To write to TimescaleDB/PostgreSQL instead (or as well), add a `[timescale]` section. Each reading becomes one row per
+laser channel (A and B) in `table`, and one row in `system_table` with the BME280 and wifi readings. The connection
+comes from the standard libpq environment variables (`PGHOST`, `PGPORT`, `PGUSER`, `PGPASSWORD`, `PGDATABASE`,
+`PGSSLMODE`), so the config file holds no credentials.
+
+```toml
+[timescale]
+    table = "purpleair"
+    system_table = "purpleair_system"
+    # max_queue = 1000   # rows held per table while the database is unreachable
+```
+
+The program only inserts rows. It checks at startup that both tables have every column and exits if not; the schema
+it expects is in `timescale_test.go` (`testSchema`). Columns use the sensor's `/json` key names: `pm*_atm` and
+`pm*_cf_1` are mass concentrations (µg/m³), and `p_*_um` are particle counts per 0.1 L. Readings that can't be written
+are queued in memory and written with the next successful insert.
+
+When a PurpleAir's BME280 fails it reports about -227 °F; the program then stores its temperature, humidity, dewpoint
+and pressure as NULL. MQTT still receives what the sensor reports.
+
 Building the Application
 ------------------------
 
@@ -92,10 +112,12 @@ Running with Docker
 
 One of the advantages of running this application with Docker is that you can use `docker-compose` and then not worry about needing to restart the system all the time. This makes this way less of a concern when problems happen.
 
+Multi-arch images (amd64, arm64, arm/v7) are published to `ghcr.io/pridkett/purpleair2mqtt` for each release.
+
 ### Building the Container
 
 ```bash
-docker build -t pridkett/purpleair2mqtt .
+docker build -t purpleair2mqtt .
 ```
 
 ### Running the Container as a One Off
